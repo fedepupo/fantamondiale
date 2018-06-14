@@ -34,10 +34,17 @@ mysql_select_db("fantamondiale", mysql_connect("localhost", "root", ""));
 
   		$datetime = date("YmdHis", mktime(date("H", strtotime($match->datetime))-5, date("i", strtotime($match->datetime)), date("s", strtotime($match->datetime)), date("m", strtotime($match->datetime)), date("d", strtotime($match->datetime)), date("Y", strtotime($match->datetime))))."<br>";
 
-		$sqd1 = getTeam($match->home_team->country, $match->home_team->code);
-		$sqd2 = getTeam($match->away_team->country, $match->away_team->code);
-
-		$IDmatch = getMatch($sqd1, $sqd2, $goal1, $goal2, $datetime);
+  		if($match->home_team->code != 'TBD'){
+  			$sqd1 = getTeam($match->home_team->country, $match->home_team->code);
+  		}else{
+  			$sqd1 = -1;
+  		}
+  		if($match->away_team->code != 'TBD'){
+  			$sqd2 = getTeam($match->away_team->country, $match->away_team->code);
+  		}else{
+  			$sqd2 = -1;
+  		}
+  		$IDmatch = getMatch($sqd1, $sqd2, $goal1, $goal2, $datetime, $match->location);
   	}
   }
 
@@ -46,17 +53,26 @@ mysql_select_db("fantamondiale", mysql_connect("localhost", "root", ""));
   	if($r = mysql_fetch_assoc($q)){
   		return $r['ID'];
   	}else{
-  		mysql_query("INSERT INTO `squadre`(`nome`, `sigla`) VALUES ('".$nome."', '".$sigla."')");
+  		mysql_query("INSERT INTO `squadre`(`nome`, `sigla`) VALUES ('".$nome."', '".$sigla."')") or die(mysql_error());
   		return mysql_insert_id();
   	}
   }
 
-  function getMatch($sqd1, $sqd2, $goal1, $goal2, $datetime){
-  	$q = mysql_query("SELECT ID FROM partite WHERE squadra_1 = '".$sqd1."' OR squadra_2 = '".$sqd2."' LIMIT 1"); 
+  function getMatch($sqd1, $sqd2, $goal1, $goal2, $datetime, $location){
+
+  	$q = mysql_query("SELECT ID, squadra_1, squadra_2 FROM partite WHERE `datetime` = '".$datetime."' AND location = '".$location."' LIMIT 1") or die(mysql_error()); 
   	if($r = mysql_fetch_assoc($q)){
+
+  		if($sqd1 > 0){
+  			$q = mysql_query("UPDATE partite SET squadra_1 = '".$sqd1."' WHERE ID = '".$r['ID']."' LIMIT 1"); 
+  		}
+  		if($sqd2 > 0){
+  			$q = mysql_query("UPDATE partite SET squadra_2 = '".$sqd2."' WHERE ID = '".$r['ID']."' LIMIT 1"); 
+  		}
+
   		return $r['ID'];
   	}else{
-  		mysql_query("INSERT INTO `partite`(`squadra_1`, `squadra_2`, `tipo`, `goal_1`, `goal_2`, `datetime`) VALUES ('".$sqd1."','".$sqd2."','','".$goal1."','".$goal2."','".$datetime."')");
+  		mysql_query("INSERT INTO `partite`(`squadra_1`, `squadra_2`, `tipo`, `goal_1`, `goal_2`, `datetime`, `location`) VALUES ('".$sqd1."','".$sqd2."','','".$goal1."','".$goal2."','".$datetime."','".$location."')");
   		return mysql_insert_id();
   	}
   }
